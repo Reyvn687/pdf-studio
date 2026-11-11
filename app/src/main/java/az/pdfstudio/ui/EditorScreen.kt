@@ -33,7 +33,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.input.pointer.PointerInputChange
+import androidx.compose.ui.input.pointer.PointerInputScope
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalConfiguration
@@ -256,7 +256,7 @@ private fun Overlay(page: Int, vm: EditorViewModel) {
     val sess = vm.edit
 
     Canvas(
-        Modifier.matchParentSize().onSizeChanged { size = it }
+        Modifier.fillMaxSize().onSizeChanged { size = it }
             // ---- toxunuşlar ----
             .pointerInput(vm.tool, size, sess) {
                 val w = size.width.toFloat(); val h = size.height.toFloat()
@@ -290,17 +290,17 @@ private fun Overlay(page: Int, vm: EditorViewModel) {
                 val w = size.width.toFloat(); val h = size.height.toFloat()
                 if (w == 0f) return@pointerInput
                 when (vm.tool) {
-                    Tool.DRAW -> detectDragGestures(
-                        onDragStart = { o: Offset -> ink.clear(); ink.add(o) },
-                        onDrag = { c: PointerInputChange, _: Offset -> ink.add(c.position) },
-                        onDragEnd = {
+                    Tool.DRAW -> dragHelper(
+                        onStart = { o -> ink.clear(); ink.add(o) },
+                        onMove = { o -> ink.add(o) },
+                        onEnd = {
                             if (ink.size > 1) vm.add(Annot.Ink(page, ink.map { Pt(it.x / w, it.y / h) }, vm.color))
                             ink.clear()
                         })
-                    Tool.HIGHLIGHT, Tool.COVER -> detectDragGestures(
-                        onDragStart = { o: Offset -> start = o; cur = o },
-                        onDrag = { c: PointerInputChange, _: Offset -> cur = c.position },
-                        onDragEnd = {
+                    Tool.HIGHLIGHT, Tool.COVER -> dragHelper(
+                        onStart = { o -> start = o; cur = o },
+                        onMove = { o -> cur = o },
+                        onEnd = {
                             val s = start; val e = cur
                             if (s != null && e != null) {
                                 val l = minOf(s.x, e.x) / w; val r = maxOf(s.x, e.x) / w
@@ -314,9 +314,10 @@ private fun Overlay(page: Int, vm: EditorViewModel) {
                         if (sess != null && sess.page == page) {
                             val m = sess.model; val sx = m.pageW / w; val sy = m.pageH / h
                             var anchor = 0
-                            detectDragGestures(
-                                onDragStart = { o: Offset -> anchor = m.hit(o.x * sx, o.y * sy); vm.setSelection(anchor, anchor) },
-                                onDrag = { c: PointerInputChange, _: Offset -> vm.setSelection(anchor, m.hit(c.position.x * sx, c.position.y * sy)) })
+                            dragHelper(
+                                onStart = { o -> anchor = m.hit(o.x * sx, o.y * sy); vm.setSelection(anchor, anchor) },
+                                onMove = { o -> vm.setSelection(anchor, m.hit(o.x * sx, o.y * sy)) },
+                                onEnd = { })
                         } else Unit
                     }
                     else -> {}
@@ -363,4 +364,18 @@ private fun Overlay(page: Int, vm: EditorViewModel) {
             Offset(minOf(s.x, e.x), minOf(s.y, e.y)), Size(kotlin.math.abs(e.x - s.x), kotlin.math.abs(e.y - s.y))
         )
     }
+}
+
+/** detectDragGestures üçün sadə sarğı (tiplər aydın verilir) */
+private suspend fun PointerInputScope.dragHelper(
+    onStart: (Offset) -> Unit,
+    onMove: (Offset) -> Unit,
+    onEnd: () -> Unit
+) {
+    detectDragGestures(
+        onDragStart = { offset: Offset -> onStart(offset) },
+        onDragEnd = { onEnd() },
+        onDragCancel = { onEnd() },
+        onDrag = { change, _ -> onMove(change.position) }
+    )
 }
