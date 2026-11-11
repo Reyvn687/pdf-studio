@@ -163,7 +163,7 @@ object PdfOps {
             results.forEachIndexed { i, lines ->
                 val page = doc.getPage(i); val g = Geo(page)
                 PDPageContentStream(doc, page, PDPageContentStream.AppendMode.APPEND, true, true).use { cs ->
-                    cs.setRenderingMode(RenderingMode.NEUTRAL) // görünməz
+                    cs.setRenderingMode(RenderingMode.NEITHER) // görünməz
                     lines.forEach { l ->
                         val s = font.safe(l.text)
                         if (s.isNotBlank()) cs.textAt(font, s, max(4f, (l.b - l.t) * g.dispH * 0.85f), g, l.l, l.b - (l.b - l.t) * 0.15f)
@@ -370,7 +370,7 @@ private class Collector : PDFTextStripper() {
 
     override fun processTextPosition(text: TextPosition) {
         try { colors[text] = graphicsState.nonStrokingColor.toRGB() } catch (_: Exception) {}
-        try { if (graphicsState.textState.renderingMode == RenderingMode.NEUTRAL) hidden.add(text) } catch (_: Exception) {}
+        try { if (graphicsState.textState.renderingMode == RenderingMode.NEITHER) hidden.add(text) } catch (_: Exception) {}
         val name = fontNames[text.font?.cosObject]
         val u = text.unicode
         if (name != null && !u.isNullOrEmpty() && text.fontSizeInPt > 0f) {
