@@ -33,6 +33,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.PointerInputChange
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalConfiguration
@@ -266,8 +267,8 @@ private fun Overlay(page: Int, vm: EditorViewModel) {
                         if (sess != null && sess.page == page) {
                             val m = sess.model; val sx = m.pageW / w; val sy = m.pageH / h
                             detectTapGestures(
-                                onLongPress = { o -> vm.selectWord(m.hit(o.x * sx, o.y * sy)) },
-                                onTap = { o ->
+                                onLongPress = { o: Offset -> vm.selectWord(m.hit(o.x * sx, o.y * sy)) },
+                                onTap = { o: Offset ->
                                     if (m.inside(o.x * sx, o.y * sy)) vm.setCaret(m.hit(o.x * sx, o.y * sy)) else vm.finishEdit()
                                 })
                         } else if (sess != null) {
@@ -290,15 +291,15 @@ private fun Overlay(page: Int, vm: EditorViewModel) {
                 if (w == 0f) return@pointerInput
                 when (vm.tool) {
                     Tool.DRAW -> detectDragGestures(
-                        onDragStart = { ink.clear(); ink.add(it) },
-                        onDrag = { c, _ -> ink.add(c.position) },
+                        onDragStart = { o: Offset -> ink.clear(); ink.add(o) },
+                        onDrag = { c: PointerInputChange, _: Offset -> ink.add(c.position) },
                         onDragEnd = {
                             if (ink.size > 1) vm.add(Annot.Ink(page, ink.map { Pt(it.x / w, it.y / h) }, vm.color))
                             ink.clear()
                         })
                     Tool.HIGHLIGHT, Tool.COVER -> detectDragGestures(
-                        onDragStart = { start = it; cur = it },
-                        onDrag = { c, _ -> cur = c.position },
+                        onDragStart = { o: Offset -> start = o; cur = o },
+                        onDrag = { c: PointerInputChange, _: Offset -> cur = c.position },
                         onDragEnd = {
                             val s = start; val e = cur
                             if (s != null && e != null) {
@@ -314,8 +315,8 @@ private fun Overlay(page: Int, vm: EditorViewModel) {
                             val m = sess.model; val sx = m.pageW / w; val sy = m.pageH / h
                             var anchor = 0
                             detectDragGestures(
-                                onDragStart = { o -> anchor = m.hit(o.x * sx, o.y * sy); vm.setSelection(anchor, anchor) },
-                                onDrag = { c, _ -> vm.setSelection(anchor, m.hit(c.position.x * sx, c.position.y * sy)) })
+                                onDragStart = { o: Offset -> anchor = m.hit(o.x * sx, o.y * sy); vm.setSelection(anchor, anchor) },
+                                onDrag = { c: PointerInputChange, _: Offset -> vm.setSelection(anchor, m.hit(c.position.x * sx, c.position.y * sy)) })
                         } else Unit
                     }
                     else -> {}
